@@ -37,21 +37,14 @@ class _MapScreenState extends State<MapScreen> {
   Widget map(){
     return FlutterMap(
         options: const MapOptions(
-            initialCenter: LatLng(30.888944724091047, 75.87145081086157),
-            initialZoom: 16,
+            initialCenter: LatLng(30.859690624606444, 75.86044488090567),
+            initialZoom: 18,
             minZoom: 8,
             maxZoom: 20,
             interactionOptions: InteractionOptions(flags: InteractiveFlag.all)
         ),
         children: [
           openStreetMapLayer,
-          PolylineLayer(polylines: [
-            Polyline(
-                points: route,
-                strokeWidth: 4.0,
-                color: Colors.blue
-            )
-          ])
         ]);
   }
 
