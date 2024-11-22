@@ -2,6 +2,7 @@ import 'package:aftermidtermcompass/map.dart';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'dart:async';
 import 'dart:math' as math;
@@ -22,6 +23,8 @@ class _MyAppState extends State<MyApp> {
   StreamSubscription<MagnetometerEvent>? _magnetometerSubscription;
   StreamSubscription<Position>? _positionSubscription;
 
+  LatLng? _currentUserLocation;
+
   List<double> _accelerometerValues = [0.0, 0.0, 0.0];
   List<double> _magnetometerValues = [0.0, 0.0, 0.0];
 
@@ -38,6 +41,18 @@ class _MyAppState extends State<MyApp> {
   late double _maxSheetHeight;
 
   CameraController? cameraController;
+
+  // Predefined building locations
+  final List<Map<String, dynamic>> buildings = [
+    {"name": "Building A", "latLng": LatLng(30.889034833728658, 75.87234993106534)},
+    {"name": "Building B", "latLng": LatLng(30.88903799246809, 75.87230584104702)},
+    {"name": "Building C", "latLng": LatLng(30.889043258159077, 75.8722311168967)},
+    {"name": "Building D", "latLng": LatLng(30.889048525254495, 75.87217230117031)},
+    {"name": "Building E", "latLng": LatLng(30.889054847625616, 75.87208528046173)},
+  ];
+
+  List<Map<String, dynamic>> _filteredBuildings = [];
+  TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -62,6 +77,16 @@ class _MyAppState extends State<MyApp> {
     });
 
     _setupCameraController();
+    _filteredBuildings = buildings;
+  }
+
+  // Update rotation from gyroscope (smoother but prone to drift)
+  void _updateRotationFromGyroscope(GyroscopeEvent event) {
+    setState(() {
+      _deviceAzimuth += event.z * (180 / math.pi); // Convert radians to degrees
+      if (_deviceAzimuth < 0) _deviceAzimuth += 360;
+      if (_deviceAzimuth >= 360) _deviceAzimuth -= 360;
+    });
   }
 
   double _calculateAzimuthFromSensors(double ax, double ay, double az, double mx, double my, double mz) {
@@ -90,17 +115,6 @@ class _MyAppState extends State<MyApp> {
     return azimuth;
   }
 
-
-  // Update rotation from gyroscope (smoother but prone to drift)
-  void _updateRotationFromGyroscope(GyroscopeEvent event) {
-    setState(() {
-      _deviceAzimuth += event.z * (180 / math.pi); // Convert radians to degrees
-      if (_deviceAzimuth < 0) _deviceAzimuth += 360;
-      if (_deviceAzimuth >= 360) _deviceAzimuth -= 360;
-    });
-  }
-
-
   void _updatePointerRotation() {
     double ax = _accelerometerValues[0];
     double ay = _accelerometerValues[1];
@@ -125,6 +139,7 @@ class _MyAppState extends State<MyApp> {
     });
   }
 
+
   Future<void> _setupCameraController() async {
     final cameras = await availableCameras();
     if (cameras.isNotEmpty) {
@@ -137,9 +152,22 @@ class _MyAppState extends State<MyApp> {
   Future<void> _checkLocationPermission() async {
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
-      await Geolocator.requestPermission();
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
+      _positionSubscription = Geolocator.getPositionStream(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 1, // Update when user moves at least 1 meter
+        ),
+      ).listen((Position position) {
+        setState(() {
+          _currentUserLocation = LatLng(position.latitude, position.longitude);
+        });
+      });
     }
   }
+
 
   @override
   void dispose() {
@@ -160,25 +188,24 @@ class _MyAppState extends State<MyApp> {
 
     return Expanded(
         child: Container(
-          child: Stack(
-            children: [
-              CameraPreview(cameraController!),
-              Center(
-                child: Transform.rotate(
-                angle: _pointerRotation * (math.pi / 180),
-                child: const Icon(
-                      Icons.navigation,
-                      size: 100,
-                      color: Colors.blue,
-                      ),
-                    )
-              )
-            ]
-          )
+            child: Stack(
+                children: [
+                  CameraPreview(cameraController!),
+                  Center(
+                      child: Transform.rotate(
+                        angle: _pointerRotation * (math.pi / 180),
+                        child: const Icon(
+                          Icons.navigation,
+                          size: 100,
+                          color: Colors.blue,
+                        ),
+                      )
+                  )
+                ]
+            )
         )
     );
   }
-
 
   Widget buildDragHandle() {
     return Container(
@@ -220,7 +247,7 @@ class _MyAppState extends State<MyApp> {
     );
   }
 
-  Widget buildMapSheet() {
+  Widget buildMapSheet(LatLng userLocation) {
     return Positioned(
       bottom: 0,
       left: 0,
@@ -244,8 +271,7 @@ class _MyAppState extends State<MyApp> {
               Expanded(
                 child: ClipRRect(
                   borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-                  child: MapScreen(
-
+                  child: MapScreen(currentUserLocation: userLocation,
                   ),
                 ),
               ),
@@ -275,11 +301,10 @@ class _MyAppState extends State<MyApp> {
         body: Stack(
           children: [
             buildCameraView(),
-            buildMapSheet(),
+            buildMapSheet(_currentUserLocation!),
           ],
         ),
       ),
     );
   }
-
 }

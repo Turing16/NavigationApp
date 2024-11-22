@@ -3,24 +3,17 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 class MapScreen extends StatefulWidget {
+
+  LatLng? currentUserLocation;
+
+  MapScreen({super.key, required this.currentUserLocation});
+
   @override
   _MapScreenState createState() => _MapScreenState();
 }
 
 class _MapScreenState extends State<MapScreen> {
 
-  List<LatLng> route = [
-
-    LatLng(30.889034833728658, 75.87234993106534),
-    LatLng(30.88903799246809, 75.87230584104702),
-    LatLng(30.889043258159077, 75.8722311168967),
-    LatLng(30.889048525254495, 75.87217230117031),
-    LatLng(30.889054847625616, 75.87208528046173),
-    LatLng(30.889060117815973, 75.87200559245662),
-    LatLng(30.889063280604887, 75.87194428654479),
-  ];
-  LatLng? selectedDestination;
-  MapController _mapController = MapController();
 
   @override
   void initState() {
@@ -30,14 +23,14 @@ class _MapScreenState extends State<MapScreen> {
   @override
   Widget build(BuildContext context) {
     return Container(
-        child: map()
+        child: map(widget.currentUserLocation!)
     );
   }
 
-  Widget map(){
+  Widget map(LatLng userLocation){
     return FlutterMap(
-        options: const MapOptions(
-            initialCenter: LatLng(30.859690624606444, 75.86044488090567),
+        options:  MapOptions(
+            initialCenter: userLocation,
             initialZoom: 18,
             minZoom: 8,
             maxZoom: 20,
@@ -45,6 +38,9 @@ class _MapScreenState extends State<MapScreen> {
         ),
         children: [
           openStreetMapLayer,
+          MarkerLayer(markers: [
+            Marker(point: userLocation, child: Icon(Icons.location_on, color: Colors.red, size: 40,))
+          ])
         ]);
   }
 
