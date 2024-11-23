@@ -44,6 +44,8 @@ dependencies:
   flutter_cube: ^0.1.1
   material_floating_search_bar_2: ^0.5.0
   fluttertoast: ^8.2.8
+  graphs: ^2.3.2
+  dijkstra: ^0.0.4
 
 dev_dependencies:
   flutter_test:

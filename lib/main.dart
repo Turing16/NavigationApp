@@ -77,6 +77,22 @@ class _MyAppState extends State<MyApp> {
 
   ];
 
+  final List<Map<String, dynamic>> houseBuildings = [
+    {
+      "name": "Building A",
+      "latLng": LatLng(30.8890344848989, 75.8717958207744),
+    },
+    {
+      "name": "Building B",
+      "latLng": LatLng(30.889318883371473, 75.86984716898593),
+    },
+    {
+      "name": "Building C",
+      "latLng": LatLng(30.890107637235303, 75.87171378647662),
+    },
+
+  ];
+
   @override
   void initState() {
     super.initState();
