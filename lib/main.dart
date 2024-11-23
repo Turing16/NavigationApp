@@ -1,8 +1,10 @@
 import 'package:aftermidtermcompass/map.dart';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:material_floating_search_bar_2/material_floating_search_bar_2.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'dart:async';
 import 'dart:math' as math;
@@ -41,18 +43,39 @@ class _MyAppState extends State<MyApp> {
   late double _maxSheetHeight;
 
   CameraController? cameraController;
+  final FloatingSearchBarController _searchBarController = FloatingSearchBarController();
+
+  // Define and initialize _filteredBuildings
+  List<Map<String, dynamic>> _filteredBuildings = [];
+  TextEditingController _searchController = TextEditingController();
+
+
+
 
   // Predefined building locations
   final List<Map<String, dynamic>> buildings = [
-    {"name": "Building A", "latLng": LatLng(30.889034833728658, 75.87234993106534)},
-    {"name": "Building B", "latLng": LatLng(30.88903799246809, 75.87230584104702)},
-    {"name": "Building C", "latLng": LatLng(30.889043258159077, 75.8722311168967)},
-    {"name": "Building D", "latLng": LatLng(30.889048525254495, 75.87217230117031)},
-    {"name": "Building E", "latLng": LatLng(30.889054847625616, 75.87208528046173)},
-  ];
+    {
+      "name": "MBA Block",
+      "latLng": LatLng(30.859893187550895, 75.86024576580667),
+    },
+    {
+      "name": "IT Department",
+      "latLng": LatLng(30.86032120868478, 75.86032537079052),
+    },
+    {
+      "name": "Auditorium",
+      "latLng": LatLng(30.859028903300768, 75.8607300986802),
+    },
+    {
+      "name": "Lipton",
+      "latLng": LatLng(30.860143010708967, 75.86114359506607),
+    },
+    {
+      "name": "Tuck Shop",
+      "latLng": LatLng(30.860512498582125, 75.86078838773383),
+    },
 
-  List<Map<String, dynamic>> _filteredBuildings = [];
-  TextEditingController _searchController = TextEditingController();
+  ];
 
   @override
   void initState() {
@@ -77,7 +100,22 @@ class _MyAppState extends State<MyApp> {
     });
 
     _setupCameraController();
-    _filteredBuildings = buildings;
+    _filteredBuildings = List.from(buildings);
+  }
+
+  // Method to filter buildings based on search input
+  void _filterBuildings(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        _filteredBuildings = List.from(buildings);
+      } else {
+        _filteredBuildings = buildings
+            .where((building) => building['name']
+            .toLowerCase()
+            .contains(query.toLowerCase()))
+            .toList();
+      }
+    });
   }
 
   // Update rotation from gyroscope (smoother but prone to drift)
@@ -247,6 +285,63 @@ class _MyAppState extends State<MyApp> {
     );
   }
 
+
+  Widget buildFloatingSearchBar() {
+    return FloatingSearchBar(
+      controller: _searchBarController,
+      hint: 'Search for buildings...',
+      scrollPadding: const EdgeInsets.only(top: 16, bottom: 56),
+      transitionDuration: const Duration(milliseconds: 300),
+      transitionCurve: Curves.easeInOut,
+      physics: const BouncingScrollPhysics(),
+      axisAlignment: 0.0,
+      openAxisAlignment: 0.0,
+      width: MediaQuery.of(context).size.width * 0.95,
+      debounceDelay: const Duration(milliseconds: 300),
+      onQueryChanged: (query) {
+        setState(() {
+          _filteredBuildings = buildings
+              .where((building) =>
+              building['name'].toLowerCase().contains(query.toLowerCase()))
+              .toList();
+        });
+      },
+      transition: CircularFloatingSearchBarTransition(),
+      actions: [
+        FloatingSearchBarAction.searchToClear(),
+      ],
+      builder: (context, transition) {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Material(
+            color: Colors.white,
+            elevation: 4,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: _filteredBuildings.length,
+              itemBuilder: (context, index) {
+                final building = _filteredBuildings[index];
+                return ListTile(
+                  title: Text(building['name']),
+                  onTap: () {
+                    _searchBarController.close();
+                    Fluttertoast.showToast(
+                      msg: "Selected: ${building['name']}",
+                      toastLength: Toast.LENGTH_SHORT,
+                      gravity: ToastGravity.BOTTOM,
+                      backgroundColor: Colors.black,
+                      textColor: Colors.white,
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget buildMapSheet(LatLng userLocation) {
     return Positioned(
       bottom: 0,
@@ -302,6 +397,7 @@ class _MyAppState extends State<MyApp> {
           children: [
             buildCameraView(),
             buildMapSheet(_currentUserLocation!),
+            buildFloatingSearchBar()
           ],
         ),
       ),
